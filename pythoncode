@@ -93,10 +93,6 @@ model_params = {
     }
 }
 
-
-# In[44]:
-
-
 scores = [] #Score list for cv
 #Grid search CV on all models above
 for model_name, mp in model_params.items():
@@ -110,10 +106,6 @@ for model_name, mp in model_params.items():
 #Display dataframe with each model and the best score / params
 df = pd.DataFrame(scores,columns=['model','best_score','best_params'])
 df
-
-
-# In[22]:
-
 
 #Construct Ensemble of best performing models, better performing models get more voting power
 
@@ -136,17 +128,9 @@ voting_clf = sklearn.ensemble.VotingClassifier(
     #weights=est_weights
 )
 
-
-# In[23]:
-
-
 #Test ensemble
 voting_clf.fit(X_train,y_train)
 voting_clf.score(X_test,y_test) #Best performance out of knn, rf, svc optimized. weights did help significantly
-
-
-# In[26]:
-
 
 #Exploring KMeans
 def kmeans_eval(X):
@@ -173,14 +157,7 @@ def kmeans_eval(X):
     plt.show
 
 
-# In[27]:
-
-
 kmeans_eval(X_train) #Run 
-
-
-# In[35]:
-
 
 #Look at prediction power for 'true' number of clusters
 kmean_clf = KMeans(n_clusters = 5)
@@ -191,10 +168,6 @@ err = np.linalg.norm(err,0)
 acc = err/(len(y_pred))
 print((1 - acc) * 100) #output as %
 #compare y_pred to y_test
-
-
-# In[37]:
-
 
 #Neural Networks
 #Function for CV
@@ -216,9 +189,6 @@ def build_model(n_layers,n_units,l2_pen,input_shape=[64]): #standardize this wit
     return model
 
 
-# In[41]:
-
-
 #Initialize kerasclassifier
 keras_class = tf.keras.wrappers.scikit_learn.KerasClassifier(build_model)
 #Possible parameters
@@ -233,14 +203,8 @@ grid_ann.fit(X_train, y_train, epochs = 15, validation_split=0.1)
 best_neural_model = grid_ann.best_estimator_.model
 
 
-# In[42]:
-
-
 print(grid_ann.best_params_)
 print(best_neural_model.evaluate(X_test,y_test))
-
-
-# In[43]:
 
 
 #Build Best Model from CV
@@ -263,14 +227,7 @@ model = Sequential([
 model.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
 model.summary()
 
-
-# In[47]:
-
-
 model.fit(X_train,y_train,epochs=100)
-
-
-# In[48]:
 
 
 model.evaluate(X_test,y_test)
