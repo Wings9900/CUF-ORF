@@ -53,19 +53,227 @@ X,y = shuffle(X,y)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
 #Initial Models
-knn = KNeighborsClassifier()
-k_range = list(range(1, 50)) #2 - 8 nearest neighbors
-param_grid = dict(n_neighbors=k_range)
-grid = GridSearchCV(knn, param_grid, cv=3, scoring='accuracy', verbose=1) #3 fold CV
-grid_search = grid.fit(X_train, y_train)
-print(grid_search.best_params_)
-print(f'{round((grid_search.best_score_) * 100,2)}% accurate on training data')
+max_depth = [int(x) for x in np.linspace(10, 100, num = 5)] #Max depth list for trees
+max_depth.append(None)
 
-#Finding test accuracy on best average accuracy neighbor parameter 
-knn_test = KNeighborsClassifier(n_neighbors = 1) #best neighbor amount is usually 7 but can be 4 depending on the train test split
-knn_test.fit(X_train,y_train)
-print(knn_test.score(X_test, y_test)) #R^2 on test data
-plot_confusion_matrix(grid,X_test,y_test,values_format = 'd') #confusion matrix on test data
+model_params = {
+    'knn' : {
+        'model': KNeighborsClassifier(),
+        'params': {
+            'n_neighbors': list(range(1, 25)) 
+        }
+    },
+    'svm': {
+        'model': SVC(),
+        'params' : {'C': [int(x) for x in np.linspace(start = 1, stop = 50, num = 10)],
+              'gamma': [int(x) for x in np.linspace(start = 100, stop = 200, num = 10)],
+              'kernel': ['linear','rbf'],
+              }
+    },
+    'random_forest': {
+        'model': RandomForestClassifier(),
+        'params' : {
+            'n_estimators': [int(x) for x in np.linspace(start = 300, stop = 600, num = 5)],
+            'max_features': ['auto', 'sqrt'],
+            'max_depth': max_depth
+        }
+    },
+    'logistic_regression' : {
+        'model': LogisticRegression(solver='liblinear',multi_class='auto'),
+        'params': {
+            'C': [int(x) for x in np.linspace(start = 1, stop = 100, num = 10)]
+        }
+    },
+    'decision_tree': {
+        'model': DecisionTreeClassifier(),
+        'params': {
+            'criterion': ['gini','entropy'],
+            'max_depth': max_depth
+        }
+    }
+}
+
+
+# In[44]:
+
+
+scores = [] #Score list for cv
+#Grid search CV on all models above
+for model_name, mp in model_params.items():
+    clf =  GridSearchCV(mp['model'], mp['params'], cv=3, return_train_score=False,verbose=1)
+    clf.fit(X_train, y_train)
+    scores.append({
+        'model': model_name,
+        'best_score': clf.best_score_,
+        'best_params': clf.best_params_
+    })
+#Display dataframe with each model and the best score / params
+df = pd.DataFrame(scores,columns=['model','best_score','best_params'])
+df
+
+
+# In[22]:
+
+
+#Construct Ensemble of best performing models, better performing models get more voting power
+
+knn_clf = KNeighborsClassifier(n_neighbors = 1)
+rf_clf = RandomForestClassifier(max_depth = None, max_features = 'sqrt', n_estimators = 450)
+svc_clf = SVC(C = 11, gamma = 188, kernel = 'rbf')
+dt_clf = DecisionTreeClassifier(criterion = 'entropy',max_depth = 32)
+lr_clf = LogisticRegression(solver='liblinear',multi_class='auto',C = 1000)
+
+
+voting_clf = sklearn.ensemble.VotingClassifier(
+    estimators=[
+        ('knn',knn_clf),
+        ('rf',rf_clf),
+        ('svc',svc_clf),
+        #('dt',dt_clf),
+        #('lr',lr_clf)
+    ],
+    voting='hard',
+    #weights=est_weights
+)
+
+
+# In[23]:
+
+
+#Test ensemble
+voting_clf.fit(X_train,y_train)
+voting_clf.score(X_test,y_test) #Best performance out of knn, rf, svc optimized. weights did help significantly
+
+
+# In[26]:
+
+
+#Exploring KMeans
+def kmeans_eval(X):
+    inertia_vals = [] #Generate lists
+    silhouette = []
+    for k in range(2,50): #Number of clusters 2 - 20
+        model = KMeans(n_clusters = k, n_init = 10) #Initilize model, KMeans, 10 different initial centroids
+        model.fit(X)
+        s = silhouette_score(X,model.labels_)
+        i = model.inertia_
+        inertia_vals.append(i) #Append values
+        silhouette.append(s)
+        print(f'Number of clusters: {k}, Inertia: {np.around(i,3)}, Silhouette: {np.around(s,3)}')
+        
+    fig, ax = plt.subplots(2,1,figsize=(12,12))
+    ax[0].set_title('Elbow Graph')  #Graph inertia like Figure 9-8
+    ax[0].set_xlabel('Number of Clusters')
+    ax[0].set_ylabel('Inertia / 10^11')
+    ax[0].plot(range(2,50),inertia_vals,marker="*")
+    ax[1].set_title('Silhouette for Different Clusters') #Graph silhouette like Figure 9-9
+    ax[1].set_xlabel('Number of Clusters')
+    ax[1].set_ylabel('Silhouette Score')
+    ax[1].plot(range(2,50),silhouette,marker="*")
+    plt.show
+
+
+# In[27]:
+
+
+kmeans_eval(X_train) #Run 
+
+
+# In[35]:
+
+
+#Look at prediction power for 'true' number of clusters
+kmean_clf = KMeans(n_clusters = 5)
+y_pred = kmean_clf.fit_predict(X_test)
+#Manually calculate accuracy
+err = y_pred - y_test
+err = np.linalg.norm(err,0)
+acc = err/(len(y_pred))
+print((1 - acc) * 100) #output as %
+#compare y_pred to y_test
+
+
+# In[37]:
+
+
+#Neural Networks
+#Function for CV
+def build_model(n_layers,n_units,l2_pen,input_shape=[64]): #standardize this with length of data
+    RegularizedDense = partial(
+        Dense,
+        activation='relu',
+        kernel_initializer='he_normal',
+        kernel_regularizer=keras.regularizers.l2(l2=l2_pen)
+    )
+    model = Sequential()
+    model.add(layers.InputLayer(input_shape=input_shape))
+    for layer in range(n_layers):
+        model.add(RegularizedDense(n_units))
+    model.add(RegularizedDense(n_units / 2))
+    model.add(RegularizedDense(n_units / 4))
+    model.add(Dense(5,activation='softmax')) #standardize this for length of data as well
+    model.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
+    return model
+
+
+# In[41]:
+
+
+#Initialize kerasclassifier
+keras_class = tf.keras.wrappers.scikit_learn.KerasClassifier(build_model)
+#Possible parameters
+params_ann = {"n_layers": [3,4,5,6],
+    "n_units": [128,320,640],
+    "l2_pen":[0,0.00001,0.000001,0.000001,0.0000001]
+    }
+#CV on parameters
+grid_ann = GridSearchCV(keras_class, params_ann,cv = 5)
+grid_ann.fit(X_train, y_train, epochs = 15, validation_split=0.1)
+#Save the best model as model
+best_neural_model = grid_ann.best_estimator_.model
+
+
+# In[42]:
+
+
+print(grid_ann.best_params_)
+print(best_neural_model.evaluate(X_test,y_test))
+
+
+# In[43]:
+
+
+#Build Best Model from CV
+RegularizedDense = partial(
+    Dense,
+    activation='relu',
+    kernel_initializer='he_normal',
+    kernel_regularizer=keras.regularizers.l2(l2=0.00001)
+)
+
+model = Sequential([
+    Flatten(input_shape=[64]),
+    RegularizedDense(640),
+    RegularizedDense(640),
+    RegularizedDense(640),
+    RegularizedDense(320),
+    RegularizedDense(160),
+    Dense(5,activation='softmax')
+])
+model.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
+model.summary()
+
+
+# In[47]:
+
+
+model.fit(X_train,y_train,epochs=100)
+
+
+# In[48]:
+
+
+model.evaluate(X_test,y_test)
 
 #Codon ranking
 def linear_lasso(X,y,A,B,C): #builds lasso model to rank codon usage importances
