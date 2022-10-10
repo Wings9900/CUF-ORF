@@ -7,14 +7,8 @@ import re
 import scipy
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow import keras
-from keras.layers import Dense, Embedding, LSTM, GRU, Dropout, Flatten, InputLayer
-from keras.models import Sequential
-from keras.layers.embeddings import Embedding
 from sklearn.model_selection import train_test_split, KFold, StratifiedKFold, cross_validate, RandomizedSearchCV, GridSearchCV
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.neighbors import KNeighborsClassifier
+
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix, plot_confusion_matrix
 from scipy.stats import reciprocal, chi2_contingency
@@ -36,86 +30,6 @@ y = data['Kingdom']
 X = np.array(X)
 y = np.array(y)
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-#Initial Models
-max_depth = [int(x) for x in np.linspace(10, 100, num = 5)] #Max depth list for trees
-max_depth.append(None)
-
-model_params = {
-    'knn' : {
-        'model': KNeighborsClassifier(),
-        'params': {
-            'n_neighbors': list(range(1, 25)) 
-        }
-    },
-    'svm': {
-        'model': SVC(),
-        'params' : {'C': [int(x) for x in np.linspace(start = 1, stop = 50, num = 10)],
-              'gamma': [int(x) for x in np.linspace(start = 100, stop = 200, num = 10)],
-              'kernel': ['linear','rbf'],
-              }
-    },
-    'random_forest': {
-        'model': RandomForestClassifier(),
-        'params' : {
-            'n_estimators': [int(x) for x in np.linspace(start = 300, stop = 600, num = 5)],
-            'max_features': ['auto', 'sqrt'],
-            'max_depth': max_depth
-        }
-    },
-    'logistic_regression' : {
-        'model': LogisticRegression(solver='liblinear',multi_class='auto'),
-        'params': {
-            'C': [int(x) for x in np.linspace(start = 1, stop = 100, num = 10)]
-        }
-    },
-    'decision_tree': {
-        'model': DecisionTreeClassifier(),
-        'params': {
-            'criterion': ['gini','entropy'],
-            'max_depth': max_depth
-        }
-    }
-}
-
-scores = [] #Score list for cv
-#Grid search CV on all models above
-for model_name, mp in model_params.items():
-    clf =  GridSearchCV(mp['model'], mp['params'], cv=3, return_train_score=False,verbose=1)
-    clf.fit(X_train, y_train)
-    scores.append({
-        'model': model_name,
-        'best_score': clf.best_score_,
-        'best_params': clf.best_params_
-    })
-#Display dataframe with each model and the best score / params
-df = pd.DataFrame(scores,columns=['model','best_score','best_params'])
-df
-
-#Construct Ensemble of best performing models, better performing models get more voting power
-
-knn_clf = KNeighborsClassifier(n_neighbors = 1)
-rf_clf = RandomForestClassifier(max_depth = None, max_features = 'sqrt', n_estimators = 450)
-svc_clf = SVC(C = 11, gamma = 188, kernel = 'rbf')
-dt_clf = DecisionTreeClassifier(criterion = 'entropy',max_depth = 32)
-lr_clf = LogisticRegression(solver='liblinear',multi_class='auto',C = 1000)
-
-
-voting_clf = sklearn.ensemble.VotingClassifier(
-    estimators=[
-        ('knn',knn_clf),
-        ('rf',rf_clf),
-        ('svc',svc_clf),
-        #('dt',dt_clf),
-        #('lr',lr_clf)
-    ],
-    voting='hard',
-    #weights=est_weights
-)
-
-#Test ensemble
-voting_clf.fit(X_train,y_train)
-voting_clf.score(X_test,y_test) #Best performance out of knn, rf, svc optimized. Weights did help significantly
 
 #Exploring KMeans
 def kmeans_eval(X):
@@ -154,64 +68,6 @@ acc = err/(len(y_pred))
 print((1 - acc) * 100) #output as %
 #compare y_pred to y_test
 
-#Neural Networks
-#Function for CV Hyperparameter Optimization
-def build_model(n_layers,n_units,l2_pen,input_shape=[64]): #standardize this with length of data
-    RegularizedDense = partial(
-        Dense,
-        activation='relu',
-        kernel_initializer='he_normal',
-        kernel_regularizer=keras.regularizers.l2(l2=l2_pen)
-    )
-    model = Sequential()
-    model.add(InputLayer(input_shape=input_shape))
-    for layer in range(n_layers):
-        model.add(RegularizedDense(n_units))
-    model.add(RegularizedDense(n_units / 2))
-    model.add(RegularizedDense(n_units / 4))
-    model.add(Dense(5,activation='softmax')) #standardize this for length of data as well
-    model.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
-    return model
-
-#Initialize kerasclassifier
-keras_class = tf.keras.wrappers.scikit_learn.KerasClassifier(build_model)
-#Possible parameters
-params_ann = {"n_layers": [3,4,5,6],
-    "n_units": [128,320,640],
-    "l2_pen":[0,0.00001,0.000001,0.000001,0.0000001]
-    }
-#CV on parameters
-grid_ann = GridSearchCV(keras_class, params_ann,cv = 5)
-grid_ann.fit(X_train, y_train, epochs = 15, validation_split=0.1)
-#Save the best model as model
-best_neural_model = grid_ann.best_estimator_.model
-
-print(grid_ann.best_params_)
-print(best_neural_model.evaluate(X_test,y_test))
-
-#Build Best Model from CV
-RegularizedDense = partial(
-    Dense,
-    activation='relu',
-    kernel_initializer='he_normal',
-    kernel_regularizer=keras.regularizers.l2(l2=0.00001)
-)
-
-model = Sequential([
-    Flatten(input_shape=[64]),
-    RegularizedDense(640),
-    RegularizedDense(640),
-    RegularizedDense(640),
-    RegularizedDense(320),
-    RegularizedDense(160),
-    Dense(5,activation='softmax')
-])
-model.compile(loss='sparse_categorical_crossentropy',optimizer='adam',metrics=['accuracy'])
-model.summary()
-
-model.fit(X_train,y_train,epochs=100)
-model.evaluate(X_test,y_test)
-
 #Codon ranking
 def linear_lasso(X,y,A,B,C): #builds lasso model to rank codon usage importance
     alphas = np.arange(A,B,C)
@@ -228,38 +84,6 @@ def linear_lasso(X,y,A,B,C): #builds lasso model to rank codon usage importance
    
 #Run function
 linear_lasso(X,y,0.0000001,0.01,0.00001)
-
-#Random Forest CV
-# Number of trees in random forest
-n_estimators = [int(x) for x in np.linspace(start = 200, stop = 1200, num = 10)]
-# Number of features to consider at every split
-max_features = ['auto', 'sqrt']
-# Maximum number of levels in tree
-max_depth = [int(x) for x in np.linspace(10, 100, num = 5)]
-max_depth.append(None)
-# Minimum number of samples required to split a node
-min_samples_split = [2, 5, 10]
-# Minimum number of samples required at each leaf node
-min_samples_leaf = [1, 2, 4]
-# Method of selecting samples for training each tree
-bootstrap = [True, False]
-# Create the random grid
-param_grid = {'n_estimators': n_estimators,
-               'max_features': max_features,
-               'max_depth': max_depth,
-               'min_samples_split': min_samples_split,
-               'min_samples_leaf': min_samples_leaf,
-               'bootstrap': bootstrap}
-print(random_grid)
-
-
-#Base model
-rf = RandomForestClassifier()
-rf_CV = GridSearchCV(estimator = rf, param_distributions = param_grid, cv = 3, verbose=2, n_jobs = -1)
-# Fit the random search model
-rf_CV.fit(X_train, y_train)
-print(rf_CV.best_params_) #print best parameters
-
 #Build and run best model
 rf_best = RandomForestClassifier(
 n_estimators = 533,
