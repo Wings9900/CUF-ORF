@@ -1,8 +1,28 @@
-Code for https://doi.org/10.1101/2022.07.20.500846
+Code for [https://doi.org/10.1101/2022.07.20.500846](https://doi.org/10.1038/s41598-023-28965-7)
 
-Exploring Phylogenetic Classification and Further Applications of Codon Usage Frequencies
+Title:
+**Machine learning classifiers predict key genomic and evolutionary traits across the kingdoms of life**
 
-Codons are the repeats of three nucleic acids in genetic material read during translation. 64 total codons exist at different frequencies known to vary between organisms. Codon usage frequencies (CUFs) have recently been used for phylogenetic classification at different discrimination levels. However, the accuracy of phylogenetic classification and applications of this predictive power are not fully elucidated in the current literature. The goal of this project was two-fold: 1.) To increase the accuracy and depth of phylogenetic classification models using CUFs in literature. 2.) To explore the potential application of identifying open reading frames (ORFs) with CUFs. To increase the accuracy of classification models GridSearchCV, TensorFlow, and keras were used to design an improved Artificial Neural Network than the relevant example in the literature. Commonly used predictors were explored in an ensemble format that performs even better than the improved neural network. To explore a more discriminatory and phylogenetically deep classification K Means was used to look at possible clustering structures in the CUF data. To identify ORFs the codon frequencies of each potential ORF are compared to the frequencies of an organism of choice with a multinomial goodness-of-fit test. With correct optimization, these tests can reject possible ORFs with high confidence. In addition to these goals, the codons were ranked in terms of importance for classification with lasso regression and random forests feature ranking. This not only highlights exciting biology related to tRNA concentrations and the variance thereof, but is also helpful for optimizing the statistical tests for ORF identification.
+Abstract:
+In this study, we investigate how an organism’s codon usage bias can serve as a predictor and classifier of various genomic and evolutionary traits across the domains of life. We perform secondary analysis of existing genetic datasets to build several AI/machine learning models. When trained on codon usage patterns of nearly 13,000 organisms, our models accurately predict the organelle of origin and taxonomic identity of nucleotide samples. We extend our analysis to identify the most influential codons for phylogenetic prediction with a custom feature ranking ensemble. Our results suggest that the genetic code can be utilized to train accurate classifiers of taxonomic and phylogenetic features. We then apply this classification framework to open reading frame (ORF) detection. Our statistical model assesses all possible ORFs in a nucleotide sample and rejects or deems them plausible based on the codon usage distribution. Our dataset and analyses are made publicly available on GitHub and the UCI ML Repository to facilitate open-source reproducibility and community engagement.
 
-![F3 large](https://user-images.githubusercontent.com/72926928/191124822-394c2251-49b4-49e0-8005-516e72a3f4ec.jpg)
-![F4 large](https://user-images.githubusercontent.com/72926928/191124832-5708a9bd-0818-4562-ad0d-00f45364f97c.jpg)
+
+
+Link to Dr. Bohdan B. Khomtchouk's Github:
+https://github.com/Bohdan-Khomtchouk/codon-usage
+
+Link to dataset in UCI machine learning repository:
+https://archive.ics.uci.edu/ml/datasets/Codon+usage
+
+Please cite as follows:
+Hallee, L., Khomtchouk, B.B. Machine learning classifiers predict key genomic and evolutionary traits across the kingdoms of life. _Sci Rep_ **13**, 2088 (2023). https://doi.org/10.1038/s41598-023-28965-7
+
+Bibtex:
+@misc{Hallee2023,
+author = {Hallee, L., Khomtchouk, B.B.},
+title = {Machine learning classifiers predict key genomic and evolutionary traits across the kingdoms of life | Scientific Reports},
+howpublished = {\url{[https://www.nature.com/articles/s41598-023-28965-7#citeas](https://doi.org/10.1038/s41598-023-28965-7)}},
+month = {February},
+year = {2023},
+note = {}
+}
