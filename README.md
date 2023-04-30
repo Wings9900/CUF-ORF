@@ -12,7 +12,7 @@ Link to Dr. Bohdan B. Khomtchouk's Github:
 https://github.com/Bohdan-Khomtchouk/codon-usage
 
 Link to dataset in UCI machine learning repository:
-https://archive.ics.uci.edu/ml/datasets/Codon+usage
+https://archive-beta.ics.uci.edu/dataset/577/codon+usage
 
 Please cite as follows:
 Hallee, L., Khomtchouk, B.B. Machine learning classifiers predict key genomic and evolutionary traits across the kingdoms of life. _Sci Rep_ **13**, 2088 (2023). https://doi.org/10.1038/s41598-023-28965-7
